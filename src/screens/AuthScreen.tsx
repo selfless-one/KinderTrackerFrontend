@@ -1,3 +1,4 @@
+// src/screens/AuthScreen.tsx
 import React, { useContext, useState } from 'react';
 import {
   View,
@@ -5,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Button,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
@@ -14,22 +14,46 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
 
   const { login } = useContext(AuthContext);
 
-  const toggleMode = () => setIsLogin(!isLogin);
+  const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setEmail('');
+    setPassword('');
+    setConfirm('');
+  };
 
   const handleSubmit = () => {
-    if (isLogin) {
-      login(email); // simulate login
-    } else {
-      if (password === confirm) {
-        // simulate register then login
-        login(email);
-      } else {
-        alert('Passwords do not match!');
-      }
+    setError('');
+
+    if (!email || !password || (!isLogin && !confirm)) {
+      setError('Please fill in all fields');
+      return;
     }
+
+    if (!isValidEmail(email)) {
+      setError('Invalid email format');
+      return;
+    }
+
+    if (!isLogin && password !== confirm) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    const user = {
+      id: Date.now().toString(),
+      name: email.split('@')[0],
+      email,
+    };
+
+    login(email);
+
   };
 
   return (
@@ -38,17 +62,22 @@ export default function AuthScreen() {
         {isLogin ? 'Login to Your Account' : 'Create an Account'}
       </Text>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <TextInput
         style={styles.input}
         placeholder="Email"
         onChangeText={setEmail}
+        value={email}
         autoCapitalize="none"
+        keyboardType="email-address"
       />
       <TextInput
         style={styles.input}
         placeholder="Password"
         secureTextEntry
         onChangeText={setPassword}
+        value={password}
       />
       {!isLogin && (
         <TextInput
@@ -56,6 +85,7 @@ export default function AuthScreen() {
           placeholder="Confirm Password"
           secureTextEntry
           onChangeText={setConfirm}
+          value={confirm}
         />
       )}
 
@@ -65,9 +95,7 @@ export default function AuthScreen() {
 
       <TouchableOpacity onPress={toggleMode}>
         <Text style={styles.toggleText}>
-          {isLogin
-            ? "Don't have an account? Register"
-            : 'Already have an account? Login'}
+          {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -84,7 +112,7 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 30,
+    marginBottom: 20,
     textAlign: 'center',
   },
   input: {
@@ -110,5 +138,10 @@ const styles = StyleSheet.create({
   toggleText: {
     textAlign: 'center',
     color: '#2e86de',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });
