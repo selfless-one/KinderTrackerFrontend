@@ -18,17 +18,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { getDatabase, ref, set, onValue } from 'firebase/database';
 import { app } from '../services/firebase';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-
 
 const { width } = Dimensions.get('window');
 
 // Polyline decode function
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
-  let index = 0, lat = 0, lng = 0, coordinates = [];
+  let index = 0,
+    lat = 0,
+    lng = 0,
+    coordinates = [];
 
   while (index < encoded.length) {
-    let b, shift = 0, result = 0;
+    let b,
+      shift = 0,
+      result = 0;
     do {
       b = encoded.charCodeAt(index++) - 63;
       result |= (b & 0x1f) << shift;
@@ -52,7 +55,7 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
   return coordinates;
 }
 
-export default function HomeScreen() {
+export default function Mapcreen() {
   const navigation = useNavigation();
   const mapRef = useRef<MapView>(null);
   const db = getDatabase(app);
@@ -69,10 +72,15 @@ export default function HomeScreen() {
     { deviceId: string; latitude: number; longitude: number; timestamp: string }[]
   >([]);
 
+  const [places, setPlaces] = useState<
+    { id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags: any }[]
+  >([]);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
 
+  // Upload current device location to Firebase Realtime Database
   const uploadLocation = async (loc: Location.LocationObject) => {
     const deviceName = Device.deviceName || Device.modelName || 'Unknown_Device';
     const data = {
@@ -88,6 +96,34 @@ export default function HomeScreen() {
     }
   };
 
+  // Fetch nearby places (e.g., restaurants) from Overpass API
+  const fetchNearbyPlaces = async (latitude: number, longitude: number) => {
+    const query = `
+      [out:json];
+      (
+        node["amenity"="restaurant"](around:500,${latitude},${longitude});
+        way["amenity"="restaurant"](around:500,${latitude},${longitude});
+        relation["amenity"="restaurant"](around:500,${latitude},${longitude});
+      );
+      out center;
+    `;
+
+    try {
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      const json = await response.json();
+      if (json.elements) {
+        setPlaces(json.elements);
+      }
+    } catch (error) {
+      console.error('Overpass API error:', error);
+    }
+  };
+
+  // Location subscription & upload
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
     (async () => {
@@ -106,6 +142,7 @@ export default function HomeScreen() {
         async (loc) => {
           setLocation(loc);
           await uploadLocation(loc);
+          fetchNearbyPlaces(loc.coords.latitude, loc.coords.longitude);
         }
       );
     })();
@@ -113,6 +150,7 @@ export default function HomeScreen() {
     return () => subscription?.remove();
   }, []);
 
+  // Listen for devices locations in Firebase
   useEffect(() => {
     const locationRef = ref(db, 'locations/');
     const unsubscribe = onValue(locationRef, (snapshot) => {
@@ -131,6 +169,7 @@ export default function HomeScreen() {
     return () => unsubscribe();
   }, []);
 
+  // Recenter map on user location
   const recenter = () => {
     if (location) {
       const { latitude, longitude } = location.coords;
@@ -142,6 +181,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Zoom map in/out
   const zoom = (factor: number) => {
     const newRegion = {
       ...region,
@@ -152,10 +192,12 @@ export default function HomeScreen() {
     mapRef.current?.animateToRegion(newRegion, 300);
   };
 
+  // Show device selector modal
   const openDeviceSelector = () => {
     setModalVisible(true);
   };
 
+  // Select a device to track
   const selectDevice = (deviceId: string) => {
     setSelectedDevice(deviceId);
     setModalVisible(false);
@@ -174,6 +216,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Navigate from current location to selected device using Google Directions API
   const navigateToSelectedDevice = async () => {
     if (!location) {
       alert('Current location not available');
@@ -193,8 +236,6 @@ export default function HomeScreen() {
     const origin = `${location.coords.latitude},${location.coords.longitude}`;
     const destination = `${device.latitude},${device.longitude}`;
     const GOOGLE_MAPS_API_KEY = 'AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI';
-    const GOOGLE_PLACES_API_KEY = 'AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI';
-
 
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&key=${GOOGLE_MAPS_API_KEY}&mode=driving`;
@@ -236,95 +277,117 @@ export default function HomeScreen() {
             region={region}
             showsUserLocation
             showsMyLocationButton={false}
+            provider={undefined} // defaults to Google on Android/iOS, or Apple on iOS
+            // You can add `customMapStyle` here if needed
           >
-            {selectedDevice &&
-              deviceMarkers
-                .filter((marker) => marker.deviceId === selectedDevice)
-                .map((marker) => (
-                  <Marker
-                    key={marker.deviceId}
-                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                    title={marker.deviceId}
-                    pinColor="red"
-                  >
-                    <Callout>
-                      <View>
-                        <Text style={{ fontWeight: 'bold' }}>{marker.deviceId}</Text>
-                        <Text>{new Date(marker.timestamp).toLocaleString()}</Text>
-                      </View>
-                    </Callout>
-                  </Marker>
-                ))}
+            {/* Device markers */}
+            {deviceMarkers.map(({ deviceId, latitude, longitude, timestamp }) => (
+              <Marker
+                key={deviceId}
+                coordinate={{ latitude, longitude }}
+                pinColor={deviceId === selectedDevice ? 'blue' : 'red'}
+                onPress={() => setSelectedDevice(deviceId)}
+              >
+                <Callout>
+                  <View>
+                    <Text style={{ fontWeight: 'bold' }}>{deviceId}</Text>
+                    <Text>{new Date(timestamp).toLocaleString()}</Text>
+                  </View>
+                </Callout>
+              </Marker>
+            ))}
 
+            {/* Nearby Places markers */}
+            {places.map((place) => {
+              const lat = place.lat ?? place.center?.lat;
+              const lon = place.lon ?? place.center?.lon;
+              if (!lat || !lon) return null;
+
+              return (
+                <Marker
+                  key={place.id}
+                  coordinate={{ latitude: lat, longitude: lon }}
+                  pinColor="green"
+                  title={place.tags?.name || 'Place'}
+                  description={place.tags?.amenity || ''}
+                />
+              );
+            })}
+
+            {/* Route Polyline */}
             {routeCoords.length > 0 && (
               <Polyline
                 coordinates={routeCoords}
-                strokeColor="#001eff"
+                strokeColor="#007AFF"
                 strokeWidth={4}
-                lineDashPattern={[10, 10]}
               />
             )}
           </MapView>
+        </View>
 
-          {/* Overlay Header with Menu */}
-          <View style={styles.mapHeader}>
-            <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
-              <Ionicons name="menu" size={30} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          
- 
-          {/* Zoom Buttons */}
-          <View style={styles.zoomControls}>
-            <TouchableOpacity style={styles.zoomButton} onPress={() => zoom(0.5)}>
-              <Ionicons name="add" size={28} color="#00c4c1" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.zoomButton} onPress={() => zoom(2)}>
-              <Ionicons name="remove" size={28} color="#00c4c1" />
-            </TouchableOpacity>
-          </View>
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.roundButton}
+            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+          >
+            <Ionicons name="menu" size={24} color="white" />
+          </TouchableOpacity>
 
-          {/* Bottom Navigation */}
-          <View style={styles.bottomNavOverlay}>
-            <View style={styles.bottomNav}>
-              <TouchableOpacity style={styles.navButton} onPress={recenter}>
-                <Ionicons name="locate" size={28} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navButton} onPress={navigateToSelectedDevice}>
-                <Ionicons name="navigate" size={28} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navButton} onPress={openDeviceSelector}>
-                <Ionicons name="clipboard" size={28} color="#fff" />
+          <TouchableOpacity style={styles.roundButton} onPress={recenter}>
+            <Ionicons name="locate" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.roundButton} onPress={() => zoom(0.5)}>
+            <Ionicons name="add" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.roundButton} onPress={() => zoom(2)}>
+            <Ionicons name="remove" size={24} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.roundButton} onPress={openDeviceSelector}>
+            <Ionicons name="people" size={24} color="white" />
+          </TouchableOpacity>
+
+          {selectedDevice && (
+            <TouchableOpacity style={styles.roundButton} onPress={navigateToSelectedDevice}>
+              <Ionicons name="navigate" size={24} color="white" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Device selector modal */}
+        {modalVisible && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Device</Text>
+              {deviceMarkers.length === 0 && <Text>No devices found</Text>}
+              {deviceMarkers.map(({ deviceId }) => (
+                <TouchableOpacity
+                  key={deviceId}
+                  onPress={() => selectDevice(deviceId)}
+                  style={[
+                    styles.deviceItem,
+                    selectedDevice === deviceId && styles.deviceItemSelected,
+                  ]}
+                >
+                  <Text style={styles.deviceText}>{deviceId}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={[styles.roundButton, { alignSelf: 'center', marginTop: 10 }]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={{ color: 'white', paddingHorizontal: 20, fontWeight: 'bold' }}>
+                  Close
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        )}
       </View>
-
-      {/* Device Selector Modal */}
-      {modalVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select a device to track</Text>
-            {deviceMarkers.length === 0 && <Text>No devices available</Text>}
-            {deviceMarkers.map((device) => (
-              <TouchableOpacity
-                key={device.deviceId}
-                style={styles.deviceItem}
-                onPress={() => selectDevice(device.deviceId)}
-              >
-                <Text style={styles.deviceText}>{device.deviceId}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={[styles.deviceItem, { backgroundColor: '#ccc' }]}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={[styles.deviceText, { textAlign: 'center' }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -340,91 +403,59 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     flex: 1,
-    position: 'relative',
   },
   map: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
   },
-  mapHeader: {
+  buttonContainer: {
     position: 'absolute',
-    top: 20,
-    left: 20,
-    backgroundColor: '#065d96',
-    padding: 10,
-    borderRadius: 10,
-    elevation: 5,
-    zIndex: 999,
-  },
-  bottomNavOverlay: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#065d96',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderRadius: 20,
-    paddingVertical: 5,
-    width: width * 0.9,
-    elevation: 5,
-    bottom: 30,
-  },
-  navButton: {
-    padding: 10,
-  },
-  zoomControls: {
-    position: 'absolute',
-    right: 20,
-    bottom: 150,
-    zIndex: 20,
+    top: 10,
+    right: 10,
+    flexDirection: 'column',
     alignItems: 'center',
   },
-  zoomButton: {
-    backgroundColor: '#fff',
-    width: 55,
-    height: 55,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 5,
-    elevation: 4,
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 999,
+  roundButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 30,
+    padding: 12,
+    marginBottom: 10,
+    elevation: 3,
   },
   modalContainer: {
-    width: '85%',
-    maxHeight: '70%',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    paddingVertical: 20,
-    paddingHorizontal: 15,
+    position: 'absolute',
+    top: 100,
+    left: width * 0.1,
+    width: width * 0.8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 999,
+  },
+  modalContent: {
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
   },
   deviceItem: {
-    backgroundColor: '#fa4646',
-    marginVertical: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    width: '100%',
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1,
+  },
+  deviceItemSelected: {
+    backgroundColor: '#007AFF22',
   },
   deviceText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 20,
-    textAlign: 'center',
+    fontSize: 16,
   },
 });

@@ -18,6 +18,9 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide navigation services",
         "UIBackgroundModes": ["location", "fetch"],
         "UIRequiredDeviceCapabilities": ["location-services", "gps"]
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
       }
     },
     "android": {
@@ -34,7 +37,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
         }
       }
     },
@@ -42,15 +45,10 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
-      [
-        "react-native-maps",
-        {
-          "apiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
-        }
-      ]
+      "expo-secure-store"
     ],
     "extra": {
+      "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI",
       "googlePlacesApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
     }
   }

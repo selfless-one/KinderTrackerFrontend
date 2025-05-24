@@ -8,6 +8,7 @@ import AuthScreen from '../screens/AuthScreen';
 import { AuthContext } from '../context/AuthContext';
 import DrawerNavigator from './DrawerNavigator';
 
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
