@@ -350,18 +350,20 @@ export default function MapScreen() {
   }, [region, routeCoords]);
 
   // Recenter map on user locatioN
-  const recenter = () => {
-    if (region) {
-      const newRegion = { 
-        ...region,
-        latitudeDelta: 0.01, 
-        longitudeDelta: 0.01 
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 1000);
-      setSelectedDevice(null);
-    }
-  };
+ const recenter = () => {
+  if (region) {
+    const zoomedInDelta = 0.005; // smaller than 0.01 for more zoom-in
+    const newRegion = {
+      ...region,
+      latitudeDelta: zoomedInDelta,
+      longitudeDelta: zoomedInDelta
+    };
+    setRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 1000);
+    setSelectedDevice(null);
+  }
+};
+
 
   // Helper for zoom levels
   const zoomLevels = [

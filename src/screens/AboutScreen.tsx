@@ -51,7 +51,7 @@ export default function DeviceScreen() {
 
           {/* Key Features Section */}
           <View style={styles.featuresCard}>
-            <Text style={styles.sectionTitle}>Key Features</Text>
+            <Text style={styles.sectionTitle}>Key Features{'\n'}</Text>
             <View style={styles.featureRow}>
               <Ionicons name="location-sharp" size={18} color="#00778B" style={styles.featureIcon} />
               <Text style={styles.featureText}>Live GPS tracking with IoT-enabled wearables</Text>
@@ -60,10 +60,10 @@ export default function DeviceScreen() {
               <Ionicons name="notifications" size={18} color="#00778B" style={styles.featureIcon} />
               <Text style={styles.featureText}>Safe zone notifications</Text>
             </View> */}
-            <View style={styles.featureRow}>
+            {/* <View style={styles.featureRow}>
               <Ionicons name="time" size={18} color="#00778B" style={styles.featureIcon} />
               <Text style={styles.featureText}>Location history review</Text>
-            </View>
+            </View> */}
             <View style={styles.featureRow}>
               <Ionicons name="alert-circle" size={18} color="#00778B" style={styles.featureIcon} />
               <Text style={styles.featureText}>Emergency SOS alerts</Text>
