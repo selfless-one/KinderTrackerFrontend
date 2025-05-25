@@ -21,7 +21,7 @@ import { DrawerActions, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
-const API_BASE_URL = 'http://192.168.100.81:8080';
+const API_BASE_URL = 'https://kindertrackerbackend-184543767933.europe-west1.run.app';
 const REGION_UPDATE_DISTANCE = 50; // meters
 const LOCATION_UPDATE_INTERVAL = 5000; // 5 seconds
 

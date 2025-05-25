@@ -62,8 +62,8 @@ const [deviceId, setDeviceId] = useState('');
 
     try {
       const endpoint = isLogin
-        ? 'http://192.168.100.81:8080/auth/signin'
-        : 'http://192.168.100.81:8080/auth/signup';
+        ? 'https://kindertrackerbackend-184543767933.europe-west1.run.app/auth/signin'
+        : 'https://kindertrackerbackend-184543767933.europe-west1.run.app/auth/signup';
 
       const response = await axios.post(endpoint, { email, password });
       const token = typeof response.data === 'string' ? response.data : response.data.token;
