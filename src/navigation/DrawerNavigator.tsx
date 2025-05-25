@@ -17,7 +17,6 @@ export default function DrawerNavigator() {
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
-       <Drawer.Screen name="Device" component={DeviceScreen} />
        <Drawer.Screen name="About" component={AboutScreen} />
        <Drawer.Screen name="Terms" component={TermsScreen} />
       {/* Add other drawer screens here */}

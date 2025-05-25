@@ -8,6 +8,9 @@ import {
   StyleSheet,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator } from 'react-native';
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,7 +19,7 @@ export default function AuthScreen() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
 
-  const { login } = useContext(AuthContext);
+  const { authenticate } = useContext(AuthContext);
 
   const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
 
@@ -28,33 +31,72 @@ export default function AuthScreen() {
     setConfirm('');
   };
 
-  const handleSubmit = () => {
-    setError('');
+  const [loading, setLoading] = useState(false);
 
-    if (!email || !password || (!isLogin && !confirm)) {
-      setError('Please fill in all fields');
-      return;
+const handleSubmit = async () => {
+  console.log("Submit clicked");
+  setError('');
+  setLoading(true);
+
+  if (!email || !password || (!isLogin && !confirm)) {
+    setError('Please fill in all fields');
+    setLoading(false);
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    setError('Invalid email format');
+    setLoading(false);
+    return;
+  }
+
+  if (!isLogin && password !== confirm) {
+    setError('Passwords do not match');
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const endpoint = isLogin
+      ? 'http://192.168.100.81:8080/auth/signin'
+      : 'http://192.168.100.81:8080/auth/signup';
+
+    console.log('Sending request to:', endpoint);
+
+    const response = await axios.post(endpoint, { email, password });
+
+    console.log('Response received:', response.status, response.data);
+
+    const token = typeof response.data === 'string' ? response.data : response.data.token;
+
+    if (token) {
+      console.log("Token found, calling authenticate()");
+      await AsyncStorage.setItem('authToken', token);
+      authenticate(email, token);
+    } else {
+      console.log("No token in response");
+      setError('Authentication failed.');
     }
 
-    if (!isValidEmail(email)) {
-      setError('Invalid email format');
-      return;
+  } catch (err: any) {
+    //console.error('Error in API call:', err);
+
+    if (err.response) {
+      if (err.response.status === 400 || err.response.status === 404) {
+        setError('Invalid credentials. Please check your email or password.');
+      } else {
+        setError(`Error ${err.response.status}: ${err.response.data?.message || 'Something went wrong.'}`);
+      }
+    } else {
+      setError('Failed to authenticate. Please check your connection and try again.');
     }
 
-    if (!isLogin && password !== confirm) {
-      setError('Passwords do not match');
-      return;
-    }
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const user = {
-      id: Date.now().toString(),
-      name: email.split('@')[0],
-      email,
-    };
 
-    login(email);
-
-  };
 
   return (
     <View style={styles.container}>
@@ -89,9 +131,21 @@ export default function AuthScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>{isLogin ? 'Login' : 'Register'}</Text>
-      </TouchableOpacity>
+     <TouchableOpacity
+  style={[styles.button, loading && { backgroundColor: '#a4c6f0' }]}
+  onPress={handleSubmit}
+  disabled={loading}
+>
+  {loading ? (
+    <ActivityIndicator size="small" color="#fff" />
+  ) : (
+    <Text style={styles.buttonText}>
+      {isLogin ? 'Login' : 'Register'}
+    </Text>
+  )}
+</TouchableOpacity>
+
+
 
       <TouchableOpacity onPress={toggleMode}>
         <Text style={styles.toggleText}>

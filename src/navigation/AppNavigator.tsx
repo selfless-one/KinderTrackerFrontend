@@ -8,11 +8,10 @@ import AuthScreen from '../screens/AuthScreen';
 import { AuthContext } from '../context/AuthContext';
 import DrawerNavigator from './DrawerNavigator';
 
-
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const { user } = useContext(AuthContext);
+  const { user } = useContext(AuthContext); // this will trigger re-render when user logs in or logs out
 
   return (
     <NavigationContainer>

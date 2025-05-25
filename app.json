@@ -16,8 +16,14 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide navigation services",
-        "UIBackgroundModes": ["location", "fetch"],
-        "UIRequiredDeviceCapabilities": ["location-services", "gps"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
+        "UIRequiredDeviceCapabilities": [
+          "location-services",
+          "gps"
+        ]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
@@ -45,7 +51,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-maps"
     ],
     "extra": {
       "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI",
