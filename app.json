@@ -45,7 +45,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
         }
-      }
+      },
+      "package": "com.rowel911.capstoneapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -56,7 +57,10 @@
     ],
     "extra": {
       "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI",
-      "googlePlacesApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
+      "googlePlacesApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI",
+      "eas": {
+        "projectId": "972d09c0-0504-4e06-985b-5ca615c33e9c"
+      }
     }
   }
 }
