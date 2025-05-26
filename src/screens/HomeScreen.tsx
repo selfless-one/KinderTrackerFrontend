@@ -145,6 +145,24 @@ export default function MapScreen() {
   const legendAnim = useRef(new Animated.Value(0)).current; // <-- Panel visible at start
   const [localTime, setLocalTime] = useState<string | null>(null); // Add this state
 
+   // Add these two variables for tracking location IDs
+  const [previousIdOfLoc, setPreviousIdOfLoc] = useState<string | null>(null);
+  const [latestIdOfLoc, setLatestIdOfLoc] = useState<string | null>(null);
+
+  // Add this state to control the visibility of the same ID dialog
+  const [sameIdDialogVisible, setSameIdDialogVisible] = useState(false);
+
+  // ...existing useState hooks...
+
+// Hide sameIdDialog when IDs are no longer equal
+useEffect(() => {
+  if (sameIdDialogVisible && latestIdOfLoc !== previousIdOfLoc) {
+    setSameIdDialogVisible(false);
+  }
+}, [latestIdOfLoc, previousIdOfLoc, sameIdDialogVisible]);
+
+// ...rest of your code...
+
   // Update zoomRef whenever region changes
   useEffect(() => {
     if (region) {
@@ -182,6 +200,19 @@ export default function MapScreen() {
         const latitude = Number(data.latitude);
         const longitude = Number(data.longitude);
 
+        // --- Store id logic (fixed) ---
+        setLatestIdOfLoc(prevLatestId => {
+          setPreviousIdOfLoc(prevLatestId); // Save the previous latestIdOfLoc
+          // Show dialog if IDs are the same and not null
+          if (prevLatestId && data.id && prevLatestId === data.id) {
+            setSameIdDialogVisible(true);
+            console.log('IDs are the same:', { previousIdOfLoc: prevLatestId, latestIdOfLoc: data.id });
+          } else {
+            console.log('ID update:', { previousIdOfLoc: prevLatestId, latestIdOfLoc: data.id });
+          }
+          return data.id ?? null;
+        });
+
         if (!isNaN(latitude) && !isNaN(longitude) && isValidCoordinate(latitude, longitude)) {
           // Use zoomRef for deltas
           const newRegion = {
@@ -208,7 +239,7 @@ export default function MapScreen() {
         await new Promise(res => setTimeout(res, 2000));
       }
     }
-  }, [location]);
+  }, [location]); // Remove latestIdOfLoc from dependency
 
   // Fetch nearby places
   const fetchNearbyPlaces = async (latitude: number, longitude: number) => {
@@ -230,12 +261,30 @@ export default function MapScreen() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`,
       });
-      const json = await response.json();
-      if (json.elements) {
-        setPlaces(json.elements);
+      const text = await response.text();
+      // Try to parse as JSON, otherwise handle as error
+      try {
+        const json = JSON.parse(text);
+        if (json.elements) {
+          setPlaces(json.elements);
+        } else {
+          setPlaces([]);
+        }
+      } catch (jsonErr) {
+        // If response is HTML (starts with <), it's an error page
+        if (text.trim().startsWith('<')) {
+          console.error('Overpass API returned HTML (likely rate-limited or error):', text.slice(0, 200));
+          setError('Nearby places service is temporarily unavailable. Please try again later.');
+        } else {
+          console.error('Overpass API returned invalid JSON:', text.slice(0, 200));
+          setError('Failed to load nearby places.');
+        }
+        setPlaces([]);
       }
     } catch (error) {
       console.error('Overpass API error:', error);
+      setError('Failed to fetch nearby places.');
+      setPlaces([]);
     }
   };
 
@@ -349,60 +398,105 @@ export default function MapScreen() {
     }
   }, [region, routeCoords]);
 
+  
+// Add this state near your other useState hooks
+const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+
+// When region is set for the first time, store it as initialRegion
+useEffect(() => {
+  if (region && !initialRegion) {
+    setInitialRegion(region);
+  }
+}, [region, initialRegion]);
+
+
   // Recenter map on user locatioN
- const recenter = () => {
-  if (region) {
-    const zoomedInDelta = 0.005; // smaller than 0.01 for more zoom-in
-    const newRegion = {
-      ...region,
-      latitudeDelta: zoomedInDelta,
-      longitudeDelta: zoomedInDelta
-    };
-    setRegion(newRegion);
-    mapRef.current?.animateToRegion(newRegion, 1000);
+// Update the recenter function to use initialRegion
+const recenter = () => {
+  if (initialRegion) {
+    setRegion(initialRegion);
+    mapRef.current?.animateToRegion(initialRegion, 1000);
     setSelectedDevice(null);
+  } else {
+    Alert.alert('Default position not available');
   }
 };
 
+  // Add this function inside your MapScreen component, below recenter
+const recenterToMyLocation = () => {
+  if (location) {
+    const { latitude, longitude } = location.coords;
+    const zoomedInDelta = 0.005;
+    const newRegion = {
+      latitude,
+      longitude,
+      latitudeDelta: zoomedInDelta,
+      longitudeDelta: zoomedInDelta,
+    };
+    // Only move the map view, do NOT update the region state (which controls the red marker)
+    mapRef.current?.animateToRegion(newRegion, 1000);
+    setSelectedDevice(null);
+  } else {
+    Alert.alert('Current location not available');
+  }
+};
+
+// Add this function inside your MapScreen component, below recenterToMyLocation
+const recenterToApiLocation = () => {
+  if (region) {
+    const zoomedInDelta = 0.005;
+    const newRegion = {
+      ...region,
+      latitudeDelta: zoomedInDelta,
+      longitudeDelta: zoomedInDelta,
+    };
+    mapRef.current?.animateToRegion(newRegion, 1000);
+    setSelectedDevice(null);
+  } else {
+    Alert.alert('API location not available');
+  }
+};
 
   // Helper for zoom levels
   const zoomLevels = [
-    0.5, 0.25, 0.1, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.007, 0.005, 0.003, 0.002, 0.001
+    0.5, 0.25, 0.1, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.007, 0.005, 0.003, 0.002, 0.001, 0.0005, 0.0002
   ];
 
-  // Zoom In
-  const zoomIn = () => {
-    if (region) {
-      const currentIndex = zoomLevels.findIndex(
-        level => Math.abs(level - region.latitudeDelta) < 0.001
-      );
-      const newIndex = Math.max(0, currentIndex - 1);
-      const newRegion = {
-        ...region,
-        latitudeDelta: zoomLevels[newIndex],
-        longitudeDelta: zoomLevels[newIndex] * (width / Dimensions.get('window').height),
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 300);
-    }
+  // Zoom Out
+  const zoomOut = async () => {
+    if (!region) return;
+    // Find the next smaller delta (more zoomed in)
+    const currentDelta = region.latitudeDelta;
+    const currentIdx = zoomLevels.findIndex(z => z <= currentDelta);
+    // If already at max zoom, do nothing
+    if (currentIdx === zoomLevels.length - 1) return;
+    const nextDelta = zoomLevels[currentIdx + 1] ?? zoomLevels[zoomLevels.length - 1];
+    const newRegion = {
+      ...region,
+      latitudeDelta: nextDelta,
+      longitudeDelta: nextDelta,
+    };
+    setRegion(newRegion);
+    mapRef.current?.animateToRegion(newRegion, 300);
   };
 
-  // Zoom Out
-  const zoomOut = () => {
-    if (region) {
-      const currentIndex = zoomLevels.findIndex(
-        level => Math.abs(level - region.latitudeDelta) < 0.001
-      );
-      const newIndex = Math.min(zoomLevels.length - 1, currentIndex + 1);
-      const newRegion = {
-        ...region,
-        latitudeDelta: zoomLevels[newIndex],
-        longitudeDelta: zoomLevels[newIndex] * (width / Dimensions.get('window').height),
-      };
-      setRegion(newRegion);
-      mapRef.current?.animateToRegion(newRegion, 300);
-    }
+// Zoom in
+const zoomIn = () => {
+  if (!region) return;
+  // Find the next larger delta (more zoomed out)
+  const currentDelta = region.latitudeDelta;
+  const currentIdx = zoomLevels.findIndex(z => z <= currentDelta);
+  // If already at min zoom, do nothing
+  if (currentIdx <= 0) return;
+  const prevDelta = zoomLevels[currentIdx - 1] ?? zoomLevels[0];
+  const newRegion = {
+    ...region,
+    latitudeDelta: prevDelta,
+    longitudeDelta: prevDelta,
   };
+  setRegion(newRegion);
+  mapRef.current?.animateToRegion(newRegion, 300);
+};
 
   // Show device selector modal
   const openDeviceSelector = () => {
@@ -469,10 +563,45 @@ export default function MapScreen() {
     }).start(() => setLegendOpen(!legendOpen));
   };
 
+  // Add this useEffect to auto-close the legend after 3 seconds when opened
+useEffect(() => {
+  if (legendOpen) {
+    const timer = setTimeout(() => {
+      Animated.timing(legendAnim, {
+        toValue: 160, // Slide out (hidden)
+        duration: 250,
+        useNativeDriver: false,
+      }).start(() => setLegendOpen(false));
+    }, 5000); // 3 seconds
+
+    return () => clearTimeout(timer);
+  }
+}, [legendOpen, legendAnim]);
+
+  // Find the closest point in routeCoords to the current location
+function getClosestRoutePoint(location: Location.LocationObject, routeCoords: Coordinate[]): Coordinate {
+  if (!location || routeCoords.length === 0) return routeCoords[0];
+  let minDist = Infinity;
+  let closest = routeCoords[0];
+  for (const coord of routeCoords) {
+    const dist = getDistance(
+      location.coords.latitude,
+      location.coords.longitude,
+      coord.latitude,
+      coord.longitude
+    );
+    if (dist < minDist) {
+      minDist = dist;
+      closest = coord;
+    }
+  }
+  return closest;
+}
+
   if (isLoading || !mapReady) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, { backgroundColor: '#f3f0ff' }]}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Loading map...</Text>
         </View>
@@ -483,6 +612,14 @@ export default function MapScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Header with drawer menu - copied and adapted from AboutScreen */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+            <Ionicons name="menu" size={30} color="#595757" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Live Map</Text>
+        </View>
+        {/* ...rest of your map and UI code... */}
         {region ? (
           <View style={styles.mapWrapper}>
             <MapView
@@ -494,6 +631,8 @@ export default function MapScreen() {
               loadingEnabled
             >
               {/* Current device location marker */}
+              {/* REMOVE THIS BLOCK TO REMOVE THE USER LOCATION MARKER */}
+              {/*
               {location && (
                 <Marker
                   key={`user-location-${location.coords.latitude}-${location.coords.longitude}`}
@@ -503,9 +642,9 @@ export default function MapScreen() {
                   }}
                   pinColor="blue"
                   title="Your Location"
-                  
                 />
               )}
+              */}
 
               {/* API location marker */}
               {region && (
@@ -516,7 +655,7 @@ export default function MapScreen() {
                     longitude: region.longitude,
                   }}
                   pinColor="red"
-                  title="Kinder Location"
+                  title="Device 32"
                   description="Last known location from Kinder tracker"
                   
                 />
@@ -537,6 +676,22 @@ export default function MapScreen() {
                     routeCoords[routeCoords.length - 1],
                   ]}
                   strokeColor="#FF9800"
+                  strokeWidth={3}
+                  lineDashPattern={[8, 8]} // Dotted line
+                />
+              )}
+
+              {/* Dotted line from current location to start of route */}
+              {location && routeCoords.length > 0 && (
+                <Polyline
+                  coordinates={[
+                    {
+                      latitude: location.coords.latitude,
+                      longitude: location.coords.longitude,
+                    },
+                    routeCoords[0],
+                  ]}
+                  strokeColor="#1877f2"
                   strokeWidth={3}
                   lineDashPattern={[8, 8]} // Dotted line
                 />
@@ -576,15 +731,17 @@ export default function MapScreen() {
               })}
             </MapView>
 
-            {/* Menu Button at the top left */}
+            {/* REMOVE THIS BLOCK: Menu Button at the top left */}
+            {/*
             <View style={styles.menuButtonContainer}>
               <TouchableOpacity
-                style={[styles.roundButton, { backgroundColor: 'white'}]} // transparent background
+                style={[styles.roundButton, { backgroundColor: 'white'}]}
                 onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
               >
                 <Ionicons name="menu" size={24} color="blue" />
               </TouchableOpacity>
             </View>
+            */}
 
             {/* Kinder Student Button at the top right */}
             {/* REMOVE THIS BLOCK TO REMOVE THE DUPLICATE PERSON BUTTON */}
@@ -687,136 +844,163 @@ export default function MapScreen() {
             {/* Centered buttons at the bottom */}
             <View style={styles.centerButtonContainer}>
               <View style={{ alignItems: 'center' }}>
-                {/* Person Button (Kinder Student) - vertically above Add button */}
-                <TouchableOpacity
-                  style={[
-                    styles.roundButton,
-                    styles.centerButton,
-                    { backgroundColor: "#008080", marginBottom: 24, padding: 32 }
-                  ]}
-                  disabled={faceManLoading}
-                  onPress={async () => {
-                    if (region) {
-                      setFaceManLoading(true);
-                      setLocalTime(null); // Reset before fetch
-                      try {
+                {/* --- Face Man and Two Buttons in a Row --- */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18, justifyContent: 'center' }}>
+                  {/* Button 1 (Circle) - now first */}
+                  <TouchableOpacity
+                    style={[
+                      styles.roundButton,
+                      styles.centerButton,
+                      { backgroundColor: "#FFFDF0" }
+                    ]}
+                    onPress={recenterToMyLocation} // <-- Change here to use recenter function
+                  >
+                    <MaterialCommunityIcons name="circle" size={24} color="#0078d7" />
+                  </TouchableOpacity>
+                  {/* Face Man Button - now in the middle */}
+                  <TouchableOpacity
+                    style={[
+                      styles.roundButton,
+                      styles.centerButton,
+                      { backgroundColor: "#008080", padding: 32, marginLeft: 16, marginRight: 16 }
+                    ]}
+                    disabled={faceManLoading}
+                    onPress={async () => {
+                      if (region) {
+                        setFaceManLoading(true);
+                        setLocalTime(null); // Reset before fetch
+                        try {
 
-                         const token = await AsyncStorage.getItem('authToken');
-    if (!token) {
-      setError('Authentication token not found');
-      return;
-    }
-                        // Fetch local time from your API (localtimedate endpoint)
-                        const response = await fetch(`${API_BASE_URL}/location/getcurrent`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-                        if (response.ok) {
-                          const data = await response.json();
-                          setLocalTime(data.dateTimeTrack || null); // Use your property here
-                        } else {
+                          const token = await AsyncStorage.getItem('authToken');
+                          if (!token) {
+                            setError('Authentication token not found');
+                            return;
+                          }
+                          // Fetch local time from your API (localtimedate endpoint)
+                          const response = await fetch(`${API_BASE_URL}/location/getcurrent`, {
+                            method: 'GET',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Accept': 'application/json',
+                            },
+                          });
+                          if (response.ok) {
+                            const data = await response.json();
+                            setLocalTime(data.dateTimeTrack || null); // Use your property here
+                          } else {
+                            setLocalTime(null);
+                          }
+                        } catch (error) {
                           setLocalTime(null);
                         }
-                      } catch (error) {
-                        setLocalTime(null);
-                      }
 
-                      try {
-                        const GOOGLE_API_KEY = 'AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI';
-                        const radius = 500;
-                        const types = [
-                          'restaurant',
-                          'cafe',
-                          'school',
-                          'park',
-                          'shopping_mall',
-                        ];
-                        let allResults: any[] = [];
+                        try {
+                          const GOOGLE_API_KEY = 'AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI';
+                          const radius = 500;
+                          const types = [
+                            'restaurant',
+                            'cafe',
+                            'school',
+                            'park',
+                            'shopping_mall',
+                          ];
+                          let allResults: any[] = [];
 
-                        for (const type of types) {
-                          const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${region.latitude},${region.longitude}&radius=${radius}&type=${type}&key=${GOOGLE_API_KEY}`;
-                          const response = await fetch(url);
-                          const data = await response.json();
-                          if (data.results && data.results.length > 0) {
-                            allResults = allResults.concat(data.results);
+                          for (const type of types) {
+                            const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${region.latitude},${region.longitude}&radius=${radius}&type=${type}&key=${GOOGLE_API_KEY}`;
+                            const response = await fetch(url);
+                            const data = await response.json();
+                            if (data.results && data.results.length > 0) {
+                              allResults = allResults.concat(data.results);
+                            }
                           }
+
+                          // Remove duplicates by place_id
+                          const uniqueResults: any[] = [];
+                          const seen = new Set();
+                          for (const place of allResults) {
+                            if (!seen.has(place.place_id)) {
+                              seen.add(place.place_id);
+                              uniqueResults.push(place);
+                            }
+                          }
+
+                          // Calculate distance in meters for each place
+                          const withDistance = uniqueResults.map((place: any) => {
+                            const lat = place.geometry?.location?.lat;
+                            const lng = place.geometry?.location?.lng;
+                            let distance = null;
+                            if (lat && lng) {
+                              const R = 6371e3;
+                              const toRad = (x: number) => (x * Math.PI) / 180;
+                              const φ1 = toRad(region.latitude);
+                              const φ2 = toRad(lat);
+                              const Δφ = toRad(lat - region.latitude);
+                              const Δλ = toRad(lng - region.longitude);
+                              const a =
+                                Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                                Math.cos(φ1) * Math.cos(φ2) *
+                                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                              distance = Math.round(R * c);
+                            }
+                            return { ...place, distance };
+                          });
+
+                          // Filter for valid coordinates first
+                          const validPlaces = withDistance.filter(
+                            (place: any) => place.geometry?.location?.lat && place.geometry?.location?.lng
+                          );
+                          // Sort by distance and take only the 5 nearest
+                          validPlaces.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+                          const nearestFive = validPlaces.slice(0, 5);
+
+                          // Set only the five nearest places for green markers
+                          setGooglePlaces(nearestFive);
+
+                          // Show dialog instead of alert
+                          setDialogContent({
+                            latitude: region.latitude,
+                            longitude: region.longitude,
+                            places: nearestFive,
+                            localTime: localTime ?? undefined, // Add this line
+                          });
+                          setDialogVisible(true);
+
+                          mapRef.current?.animateToRegion(region, 1000);
+                        } catch (error) {
+                          setDialogContent({
+                            latitude: region.latitude,
+                            longitude: region.longitude,
+                            places: [],
+                          });
+                          setDialogVisible(true);
+                        } finally {
+                          setFaceManLoading(false);
                         }
-
-                        // Remove duplicates by place_id
-                        const uniqueResults: any[] = [];
-                        const seen = new Set();
-                        for (const place of allResults) {
-                          if (!seen.has(place.place_id)) {
-                            seen.add(place.place_id);
-                            uniqueResults.push(place);
-                          }
-                        }
-
-                        // Calculate distance in meters for each place
-                        const withDistance = uniqueResults.map((place: any) => {
-                          const lat = place.geometry?.location?.lat;
-                          const lng = place.geometry?.location?.lng;
-                          let distance = null;
-                          if (lat && lng) {
-                            const R = 6371e3;
-                            const toRad = (x: number) => (x * Math.PI) / 180;
-                            const φ1 = toRad(region.latitude);
-                            const φ2 = toRad(lat);
-                            const Δφ = toRad(lat - region.latitude);
-                            const Δλ = toRad(lng - region.longitude);
-                            const a =
-                              Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                              Math.cos(φ1) * Math.cos(φ2) *
-                              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                            distance = Math.round(R * c);
-                          }
-                          return { ...place, distance };
-                        });
-
-                        // Filter for valid coordinates first
-                        const validPlaces = withDistance.filter(
-                          (place: any) => place.geometry?.location?.lat && place.geometry?.location?.lng
-                        );
-                        // Sort by distance and take only the 5 nearest
-                        validPlaces.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-                        const nearestFive = validPlaces.slice(0, 5);
-
-                        // Set only the five nearest places for green markers
-                        setGooglePlaces(nearestFive);
-
-                        // Show dialog instead of alert
-                        setDialogContent({
-                          latitude: region.latitude,
-                          longitude: region.longitude,
-                          places: nearestFive,
-                          localTime: localTime ?? undefined, // Add this line
-                        });
-                        setDialogVisible(true);
-
-                        mapRef.current?.animateToRegion(region, 1000);
-                      } catch (error) {
-                        setDialogContent({
-                          latitude: region.latitude,
-                          longitude: region.longitude,
-                          places: [],
-                        });
-                        setDialogVisible(true);
-                      } finally {
-                        setFaceManLoading(false);
                       }
-                    }
-                  }}
-                >
-                  {faceManLoading ? (
-                    <ActivityIndicator size={32} color="#FFD600" />
-                  ) : (
-                    <MaterialCommunityIcons name="face-man" size={40} color="#FFD600" />
-                  )}
-                </TouchableOpacity>
+                    }}
+                  >
+                    {faceManLoading ? (
+                      <ActivityIndicator size={32} color="#FFD600" />
+                    ) : (
+                      <MaterialCommunityIcons name="face-man" size={40} color="#FFD600" />
+                    )}
+                  </TouchableOpacity>
+                  {/* Button 2 (Red Marker) */}
+                  <TouchableOpacity
+                    style={[
+                      styles.roundButton,
+                      styles.centerButton,
+                      { backgroundColor: "#FFFDF0" }
+                    ]}
+                    onPress={recenterToApiLocation}
+                  >
+                    <MaterialCommunityIcons name="map-marker" size={28} color="red" />
+                  </TouchableOpacity>
+                </View>
+                {/* --- END OF ROW --- */}
+
                 {/* Add, Locate, Remove buttons in a row */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {/* Recenter Button */}
@@ -870,7 +1054,8 @@ export default function MapScreen() {
         <Text style={styles.legendText}>Kinder Nearby Places</Text>
       </View>
       <View style={styles.legendItem}>
-        <MaterialCommunityIcons name="map-marker" size={22} color="blue" style={styles.legendIcon} />
+        {/* Changed icon to a blue circle */}
+        <MaterialCommunityIcons name="circle" size={15} color="#1877f2" style={[styles.legendIcon, { paddingLeft: 3 }]} />
         <Text style={styles.legendText}>Your Current Location</Text>
       </View>
     </View>
@@ -960,6 +1145,36 @@ export default function MapScreen() {
   </View>
 </Modal>
         )}
+
+        {/* Same ID dialog */}
+        {sameIdDialogVisible && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 70,
+              alignSelf: 'center',
+              backgroundColor: '#fffbe6',
+              borderRadius: 20,
+              paddingVertical: 10,
+              paddingHorizontal: 24,
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.18,
+              shadowRadius: 4,
+              zIndex: 9999,
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 10,
+            }}
+          >
+            <MaterialCommunityIcons name="alert-circle" size={22} color="#d9534f" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#d9534f', fontWeight: 'bold', fontSize: 15 }}>
+              Unable to retrieve current location for Device 32.
+            </Text>
+            {/* Removed the X (close) button */}
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -968,11 +1183,39 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f0ff',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
+    backgroundColor: '#f3f0ff',
+  },
+  header: {
+    backgroundColor: '#e5e0ff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // <-- Add this line to center content horizontally
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#d1cfff',
+    borderRadius: 8,
+    margin: 10,
+    elevation: 5,
+    shadowColor: '#6c47ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#6c47ff',
+    // Remove marginLeft and paddingLeft for true centering
+    // marginLeft: 20,
+    paddingRight: 24,
+    flex: 1, // <-- Add this to take available space
+    textAlign: 'center', // <-- Center text inside the flexed space
   },
   mapWrapper: {
     flex: 1,
@@ -986,6 +1229,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    // backgroundColor: '#f3f0ff', // <-- Remove this line if present
   },
   loadingText: {
     marginTop: 10,
@@ -1165,6 +1409,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
+  slideDownDialogBox: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 22,
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 8,
+    // Slide down effect
+    transform: [{ translateY: 0 }],
+    top: 0,
+    position: 'absolute',
+    alignSelf: 'center',
+    marginTop: 40, // Slide down from top
+  },
   latLngRow: {
     flexDirection: 'row',
     alignItems: 'baseline', // Ensures text aligns on the baseline
@@ -1216,10 +1478,10 @@ const styles = StyleSheet.create({
   },
   legendContainer: {
     position: 'absolute',
-    top: 10,
+    top: 60,
     right: 0, // Anchor to right
     width: 160,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#f3f0ff',
     borderRadius: 10,
     padding: 10,
     zIndex: 100,
@@ -1229,19 +1491,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   legendToggleButton: {
-    position: 'absolute',
-    left: -48, // Increase offset for bigger button
-    top: 10,
-    width: 48, // Increased size
-    height: 48, // Increased size
-    backgroundColor: 'white', // Green color
-    borderTopLeftRadius: 24, // Match new size
-    borderBottomLeftRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    zIndex: 101,
-  },
+  position: 'absolute',
+  left: -48, // Increase offset for bigger button
+  top: 40,   // <-- Move button further down (was 10)
+  width: 48, // Increased size
+  height: 48, // Increased size
+  backgroundColor: 'white',
+  borderTopLeftRadius: 24,
+  borderBottomLeftRadius: 24,
+  justifyContent: 'center',
+  alignItems: 'center',
+  elevation: 5,
+  zIndex: 101,
+},
   legendToggleText: {
     fontSize: 14,
     color: '#007AFF',

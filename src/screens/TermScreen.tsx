@@ -47,12 +47,12 @@ export default function TermScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f0ff', // updated color
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f0ff', // updated color
   },
   header: {
     backgroundColor: '#dffbff',

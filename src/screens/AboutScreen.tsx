@@ -8,7 +8,8 @@ import {
   Platform,
   StatusBar,
   Linking,
-  ScrollView, // <-- Add this import
+  ScrollView,
+  Image, // <-- Add this import
 } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
@@ -24,17 +25,20 @@ export default function DeviceScreen() {
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
             <Ionicons name="menu" size={30} color="#595757" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>GPS-Link</Text>
+          <Text style={styles.headerTitle}>About</Text>
         </View>
 
         {/* Main content */}
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Logo or App Icon Placeholder */}
           <View style={styles.logoContainer}>
-            <Ionicons name="shield-checkmark" size={60} color="#00778B" />
+            <Image
+              source={require('../assets/trackerlogo.png')}
+              style={{ width: 80, height: 80, resizeMode: 'contain' }}
+            />
           </View>
-
-          <Text style={styles.title}>Kinder Tracker</Text>
+          
+          <Text style={styles.title}>KidGuardian</Text>
           <Text style={styles.mission}>
             Empowering parents to keep their children safe and connected, anytime and anywhere.
           </Text>
@@ -45,7 +49,7 @@ export default function DeviceScreen() {
           <View style={styles.aboutCard}>
             <Text style={styles.sectionTitle}>About</Text>
             <Text style={styles.description}>
-              Kinder Tracker is a smart family safety app that uses IoT-enabled devices to provide real-time location tracking, instant alerts, and safe zone monitoring. Built with privacy in mind, it keeps families connected and reassured—wherever they are.
+              KidGuardian is a smart family safety app that uses IoT-enabled devices to provide real-time location tracking, instant alerts, and safe zone monitoring. Built with privacy in mind, it keeps families connected and reassured—wherever they are.
             </Text>
           </View>
 
@@ -99,9 +103,13 @@ export default function DeviceScreen() {
                 <Ionicons name="person-circle" size={18} color="#00778B" style={styles.creditIcon} />
                 <Text style={styles.creditName}>Merca Randy</Text>
               </View>
-              <View style={styles.creditRow}>
+               <View style={styles.creditRow}>
                 <Ionicons name="person-circle" size={18} color="#00778B" style={styles.creditIcon} />
                 <Text style={styles.creditName}>Guzman Carlo Dave</Text>
+              </View>
+               <View style={styles.creditRow}>
+                <Ionicons name="person-circle" size={18} color="#00778B" style={styles.creditIcon} />
+                <Text style={styles.creditName}>Dimaranan Kobe</Text>
               </View>
               <View style={styles.creditRow}>
                 <Ionicons name="person-circle" size={18} color="#00778B" style={styles.creditIcon} />
@@ -147,7 +155,7 @@ export default function DeviceScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Disclaimer</Text>
             <Text style={styles.sectionContent}>
-              Kinder Tracker is intended for use by parents and guardians. Please respect privacy and comply with all applicable laws.
+              KidGuardian is intended for use by parents and guardians. Please respect privacy and comply with all applicable laws.
             </Text>
           </View>
         </ScrollView>
@@ -159,22 +167,22 @@ export default function DeviceScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f0ff', // changed from #fff
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12, // Add horizontal padding to fit content
+    backgroundColor: '#f3f0ff', // changed from #fff
+    paddingHorizontal: 12,
   },
   header: {
-    backgroundColor: '#dffbff',
+    backgroundColor: '#e5e0ff', // subtle contrast for header
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#d1cfff',
     borderRadius: 8,
     margin: 10,
     elevation: 5,
@@ -183,7 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 20,
-    color: '#000',
+    color: '#6c47ff', // accent color
     paddingLeft: 70,
   },
   content: {
@@ -249,13 +257,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   creditsCard: {
-    backgroundColor: '#f2fcff',
+    backgroundColor: '#f3f0ff', // changed from #f2fcff
     borderRadius: 10,
     padding: 15,
     marginTop: 15,
     marginBottom: 10,
-    // Remove horizontal margin for edge-to-edge fit
-    shadowColor: '#00778B',
+    shadowColor: '#6c47ff',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -287,26 +294,24 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   aboutCard: {
-    backgroundColor: '#eafcff',
+    backgroundColor: '#f3f0ff', // changed from #eafcff
     borderRadius: 10,
     padding: 15,
     marginTop: 15,
     marginBottom: 10,
-    // Remove horizontal margin for edge-to-edge fit
-    shadowColor: '#00778B',
+    shadowColor: '#6c47ff',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 1,
   },
   featuresCard: {
-    backgroundColor: '#f8fdff',
+    backgroundColor: '#f3f0ff', // changed from #f8fdff
     borderRadius: 10,
     padding: 15,
     marginTop: 10,
     marginBottom: 10,
-    // Remove horizontal margin for edge-to-edge fit
-    shadowColor: '#00778B',
+    shadowColor: '#6c47ff',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
@@ -326,13 +331,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   versionCard: {
-    backgroundColor: '#f8fdff',
+    backgroundColor: '#f3f0ff', // changed from #f8fdff
     borderRadius: 10,
     padding: 15,
     marginTop: 10,
     marginBottom: 10,
-    // alignItems: 'center', // Remove this line to left-align content
-    shadowColor: '#00778B',
+    shadowColor: '#6c47ff',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,

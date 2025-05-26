@@ -22,15 +22,15 @@ export default function DeviceScreen() {
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
             <Ionicons name="menu" size={30} color="#595757" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>GPS-Link</Text>
+          <Text style={styles.headerTitle}>Terms</Text>
         </View>
 
         {/* Main content */}
         <View style={styles.content}>
-          <Text style={styles.title}>Kinder Tracker Terms & Conditions</Text>
+          <Text style={styles.title}>KidGuardian Terms & Conditions</Text>
           <View style={styles.termsCard}>
             <Text style={styles.termsWelcome}>
-              Welcome to <Text style={styles.kinderHighlight}>Kinder Tracker</Text>!
+              Welcome to <Text style={styles.kinderHighlight}>KidGuardian</Text>!
             </Text>
             <Text style={styles.termsIntro}>
               By using this application, you agree to the following terms:
@@ -38,7 +38,7 @@ export default function DeviceScreen() {
             <View style={styles.divider} />
             <View style={styles.termItem}>
               <Text style={styles.termText}>
-                <Text style={styles.termBold}>Purpose:</Text> Kinder Tracker is designed to help guardians and authorized users monitor the location of children for safety and peace of mind.
+                <Text style={styles.termBold}>Purpose:</Text> KidGuardian is designed to help guardians and authorized users monitor the location of children for safety and peace of mind.
               </Text>
             </View>
             <View style={styles.termItem}>
@@ -53,7 +53,7 @@ export default function DeviceScreen() {
             </View>
             <View style={styles.termItem}>
               <Text style={styles.termText}>
-                <Text style={styles.termBold}>Appropriate Use:</Text> Do not use Kinder Tracker for unlawful purposes or to track individuals without their consent.
+                <Text style={styles.termBold}>Appropriate Use:</Text> Do not use KidGuardian for unlawful purposes or to track individuals without their consent.
               </Text>
             </View>
             <View style={styles.termItem}>
@@ -85,25 +85,29 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f3f0ff',
   },
   header: {
-    backgroundColor: '#dffbff',
+    backgroundColor: '#e5e0ff', // subtle contrast for header, like AboutScreen
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#d1cfff', // match AboutScreen border
     borderRadius: 8,
     margin: 10,
     elevation: 5,
+    shadowColor: '#6c47ff', // subtle purple shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 20,
-    color: '#000',
+    color: '#6c47ff', // accent color like AboutScreen
     paddingLeft: 70,
   },
   content: {
