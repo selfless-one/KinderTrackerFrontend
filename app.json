@@ -18,16 +18,22 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide navigation services",
         "UIBackgroundModes": [
           "location",
+          "fetch",
+          "location",
           "fetch"
         ],
         "UIRequiredDeviceCapabilities": [
           "location-services",
+          "gps",
+          "location-services",
           "gps"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD-s3l3tAly_hOhSec_sLLGNyKTZ45DoQI"
-      }
+      },
+      "bundleIdentifier": "com.rowel911.capstoneapp"
     },
     "android": {
       "adaptiveIcon": {
