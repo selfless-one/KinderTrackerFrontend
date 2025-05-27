@@ -48,16 +48,18 @@ export default function AddDeviceScreen() {
           <Text style={styles.title}>Link Device</Text>
         
           <View style={{ width: '100%', marginBottom: 0 }}>
+            <Text style={{ marginBottom: 4, color: '#6c47ff', fontWeight: 'bold' }}>
+              Device Name
+            </Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter Device Name"
               value={deviceName}
               onChangeText={setDeviceName}
               autoCapitalize="words"
               autoCorrect={false}
             />
             <TouchableOpacity
-              style={{ position: 'absolute', right: 12, top: 18 }}
+              style={{ position: 'absolute', right: 12, top: 38 }}
               onPress={() => setShowHint(true)}
               accessibilityLabel="Show device name hint"
             >
@@ -99,16 +101,18 @@ export default function AddDeviceScreen() {
           </Modal>
 
           <View style={{ width: '100%', marginBottom: 0 }}>
+            <Text style={{ marginBottom: 4, color: '#6c47ff', fontWeight: 'bold' }}>
+              Device ID
+            </Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter the Device ID"
               value={deviceId}
               onChangeText={setDeviceId}
               autoCapitalize="none"
               autoCorrect={false}
             />
             <TouchableOpacity
-              style={{ position: 'absolute', right: 12, top: 18 }}
+              style={{ position: 'absolute', right: 12, top: 38 }}
               onPress={() => setShowHintDeviceId(true)}
               accessibilityLabel="Show device ID hint"
             >

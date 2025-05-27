@@ -1,24 +1,24 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Alert, BackHandler } from 'react-native'; // <-- add BackHandler
+import React, { useContext } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Alert, BackHandler } from 'react-native';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import { AuthContext } from '../context/AuthContext'; // <-- import your context
 
 export default function CustomDrawerContent(props: any) {
-  const handleLogout = () => {
+  const { logout } = useContext(AuthContext); // <-- get logout function
+
+  const handleLogout = async () => {
     Alert.alert(
       'Log Out',
       'Are you sure you want to log out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Log Out', 
-          style: 'destructive', 
-          onPress: () => {
-            // Optionally clear auth token here if needed
-            // AsyncStorage.removeItem('authToken');
-            props.navigation.getParent()?.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            // await AsyncStorage.removeItem('authToken');
+            logout(); // <-- this will trigger the navigator to show AuthScreen
           }
         },
       ],
@@ -47,9 +47,9 @@ export default function CustomDrawerContent(props: any) {
         <DrawerItemList {...props} />
       </View>
       <View style={styles.bottomButtons}>
-        {/* <TouchableOpacity style={styles.button} onPress={handleLogout}>
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>Log Out</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={handleExit}>
           <Text style={styles.buttonText}>Exit</Text>
         </TouchableOpacity>
